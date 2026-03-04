@@ -172,8 +172,10 @@ export class MuapiClient {
         const endpoint = modelInfo?.endpoint || params.model;
         const url = `${this.baseUrl}/api/v1/${endpoint}`;
 
-        const finalPayload = { prompt: params.prompt };
+        const finalPayload = {};
 
+        if (params.prompt) finalPayload.prompt = params.prompt;
+        if (params.request_id) finalPayload.request_id = params.request_id;
         if (params.aspect_ratio) finalPayload.aspect_ratio = params.aspect_ratio;
         if (params.duration) finalPayload.duration = params.duration;
         if (params.resolution) finalPayload.resolution = params.resolution;

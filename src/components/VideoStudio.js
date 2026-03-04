@@ -14,6 +14,9 @@ export function VideoStudio() {
     let selectedAr = defaultModel.inputs?.aspect_ratio?.default || '16:9';
     let selectedDuration = defaultModel.inputs?.duration?.default || 5;
     let selectedResolution = defaultModel.inputs?.resolution?.default || '';
+    let selectedQuality = defaultModel.inputs?.quality?.default || '';
+    let lastGenerationId = null;
+    let lastGenerationModel = null;
     let dropdownOpen = null;
     let uploadedImageUrl = null;
     let imageMode = false; // false = t2v models, true = i2v models
@@ -22,6 +25,11 @@ export function VideoStudio() {
     const getCurrentAspectRatios = (id) => imageMode ? getAspectRatiosForI2VModel(id) : getAspectRatiosForVideoModel(id);
     const getCurrentDurations = (id) => imageMode ? getDurationsForI2VModel(id) : getDurationsForModel(id);
     const getCurrentResolutions = (id) => imageMode ? getResolutionsForI2VModel(id) : getResolutionsForVideoModel(id);
+    const getCurrentModel = () => getCurrentModels().find(m => m.id === selectedModel);
+    const getQualitiesForModel = (id) => {
+        const model = getCurrentModels().find(m => m.id === id);
+        return model?.inputs?.quality?.enum || [];
+    };
 
     // ==========================================
     // 1. HERO SECTION
@@ -103,6 +111,15 @@ export function VideoStudio() {
     topRow.appendChild(textarea);
     bar.appendChild(topRow);
 
+    // Extend mode banner (shown when extend model is active, not editable by user)
+    const extendBanner = document.createElement('div');
+    extendBanner.className = 'hidden items-center gap-2 px-4 py-2 mx-2 mt-2 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary';
+    extendBanner.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <span>Extending previous Seedance 2.0 generation — add an optional prompt to guide the continuation</span>
+    `;
+    bar.appendChild(extendBanner);
+
     // Bottom Row: Controls
     const bottomRow = document.createElement('div');
     bottomRow.className = 'flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 px-2 pt-4 border-t border-white/5';
@@ -140,16 +157,22 @@ export function VideoStudio() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="opacity-60 text-secondary"><path d="M6 2L3 6v15a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z"/></svg>
     `, selectedResolution || '720p', 'v-resolution-btn');
 
+    const qualityBtn = createControlBtn(`
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="opacity-60 text-secondary"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    `, selectedQuality || 'basic', 'v-quality-btn');
+
     controlsLeft.appendChild(modelBtn);
     controlsLeft.appendChild(arBtn);
     controlsLeft.appendChild(durationBtn);
     controlsLeft.appendChild(resolutionBtn);
+    controlsLeft.appendChild(qualityBtn);
 
     // Initial visibility (t2v mode)
     const initDurations = getDurationsForModel(defaultModel.id);
     durationBtn.style.display = initDurations.length > 0 ? 'flex' : 'none';
     const initResolutions = getResolutionsForVideoModel(defaultModel.id);
     resolutionBtn.style.display = initResolutions.length > 0 ? 'flex' : 'none';
+    qualityBtn.style.display = 'none';
 
     const generateBtn = document.createElement('button');
     generateBtn.className = 'bg-primary text-black px-6 md:px-8 py-3 md:py-3.5 rounded-xl md:rounded-[1.5rem] font-black text-sm md:text-base hover:shadow-glow hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2.5 w-full sm:w-auto shadow-lg';
@@ -168,10 +191,19 @@ export function VideoStudio() {
     dropdown.className = 'absolute bottom-[102%] left-2 z-50 transition-all opacity-0 pointer-events-none scale-95 origin-bottom-left glass rounded-3xl p-3 translate-y-2 w-[calc(100vw-3rem)] max-w-xs shadow-4xl border border-white/10 flex flex-col';
 
     const updateControlsForModel = (modelId) => {
-        const availableArs = getCurrentAspectRatios(modelId);
-        selectedAr = availableArs[0];
-        document.getElementById('v-ar-btn-label').textContent = selectedAr;
+        const model = getCurrentModels().find(m => m.id === modelId);
 
+        // Aspect ratio
+        const availableArs = getCurrentAspectRatios(modelId);
+        if (availableArs.length > 0) {
+            selectedAr = availableArs[0];
+            document.getElementById('v-ar-btn-label').textContent = selectedAr;
+            arBtn.style.display = 'flex';
+        } else {
+            arBtn.style.display = 'none';
+        }
+
+        // Duration
         const durations = getCurrentDurations(modelId);
         if (durations.length > 0) {
             selectedDuration = durations[0];
@@ -181,6 +213,7 @@ export function VideoStudio() {
             durationBtn.style.display = 'none';
         }
 
+        // Resolution
         const resolutions = getCurrentResolutions(modelId);
         if (resolutions.length > 0) {
             selectedResolution = resolutions[0];
@@ -188,6 +221,26 @@ export function VideoStudio() {
             resolutionBtn.style.display = 'flex';
         } else {
             resolutionBtn.style.display = 'none';
+        }
+
+        // Quality
+        const qualities = getQualitiesForModel(modelId);
+        if (qualities.length > 0) {
+            selectedQuality = model?.inputs?.quality?.default || qualities[0];
+            document.getElementById('v-quality-btn-label').textContent = selectedQuality;
+            qualityBtn.style.display = 'flex';
+        } else {
+            selectedQuality = '';
+            qualityBtn.style.display = 'none';
+        }
+
+        // Extend banner (extend model only)
+        if (model?.requiresRequestId) {
+            extendBanner.classList.remove('hidden');
+            extendBanner.classList.add('flex');
+        } else {
+            extendBanner.classList.add('hidden');
+            extendBanner.classList.remove('flex');
         }
     };
 
@@ -296,6 +349,28 @@ export function VideoStudio() {
             });
             dropdown.appendChild(list);
 
+        } else if (type === 'quality') {
+            dropdown.classList.add('max-w-[200px]');
+            dropdown.innerHTML = `<div class="text-[10px] font-bold text-secondary uppercase tracking-widest px-3 py-2 border-b border-white/5 mb-2">Quality</div>`;
+            const list = document.createElement('div');
+            list.className = 'flex flex-col gap-1';
+            getQualitiesForModel(selectedModel).forEach(q => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3.5 hover:bg-white/5 rounded-2xl cursor-pointer transition-all group';
+                item.innerHTML = `
+                    <span class="text-xs font-bold text-white opacity-80 group-hover:opacity-100 capitalize">${q}</span>
+                    ${selectedQuality === q ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d9ff00" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                `;
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    selectedQuality = q;
+                    document.getElementById('v-quality-btn-label').textContent = q;
+                    closeDropdown();
+                };
+                list.appendChild(item);
+            });
+            dropdown.appendChild(list);
+
         } else if (type === 'resolution') {
             dropdown.classList.add('max-w-[200px]');
             dropdown.innerHTML = `<div class="text-[10px] font-bold text-secondary uppercase tracking-widest px-3 py-2 border-b border-white/5 mb-2">Resolution</div>`;
@@ -349,6 +424,7 @@ export function VideoStudio() {
     arBtn.onclick = toggleDropdown('ar', arBtn);
     durationBtn.onclick = toggleDropdown('duration', durationBtn);
     resolutionBtn.onclick = toggleDropdown('resolution', resolutionBtn);
+    qualityBtn.onclick = toggleDropdown('quality', qualityBtn);
 
     window.addEventListener('click', closeDropdown);
     container.appendChild(dropdown);
@@ -400,11 +476,17 @@ export function VideoStudio() {
     downloadBtn.className = 'bg-primary text-black px-6 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-glow active:scale-95';
     downloadBtn.textContent = '↓ Download';
 
+    const extendBtn = document.createElement('button');
+    extendBtn.className = 'hidden bg-white/10 hover:bg-white/20 px-6 py-2.5 rounded-2xl text-xs font-bold transition-all border border-primary/30 text-primary backdrop-blur-lg';
+    extendBtn.textContent = '↗ Extend';
+    extendBtn.title = 'Extend this video using Seedance 2.0 Extend';
+
     const newPromptBtn = document.createElement('button');
     newPromptBtn.className = 'bg-white/10 hover:bg-white/20 px-6 py-2.5 rounded-2xl text-xs font-bold transition-all border border-white/5 backdrop-blur-lg text-white';
     newPromptBtn.textContent = '+ New';
 
     canvasControls.appendChild(regenerateBtn);
+    canvasControls.appendChild(extendBtn);
     canvasControls.appendChild(downloadBtn);
     canvasControls.appendChild(newPromptBtn);
 
@@ -413,9 +495,13 @@ export function VideoStudio() {
     container.appendChild(canvas);
 
     // --- Helper: Show video in canvas ---
-    const showVideoInCanvas = (videoUrl) => {
+    const showVideoInCanvas = (videoUrl, genModel) => {
         hero.classList.add('hidden');
         promptWrapper.classList.add('hidden');
+
+        // Show extend button only for seedance-v2.0-t2v and i2v (not extend itself)
+        const isSeedance2 = genModel && (genModel === 'seedance-v2.0-t2v' || genModel === 'seedance-v2.0-i2v');
+        extendBtn.classList.toggle('hidden', !isSeedance2);
 
         resultVideo.src = videoUrl;
         resultVideo.onloadeddata = () => {
@@ -455,7 +541,15 @@ export function VideoStudio() {
                     downloadFile(entry.url, `video-${entry.id || idx}.mp4`);
                     return;
                 }
-                showVideoInCanvas(entry.url);
+                // Restore extend context when viewing a seedance-v2.0 generation
+                if (entry.model === 'seedance-v2.0-t2v' || entry.model === 'seedance-v2.0-i2v') {
+                    lastGenerationId = entry.id;
+                    lastGenerationModel = entry.model;
+                } else {
+                    lastGenerationId = null;
+                    lastGenerationModel = null;
+                }
+                showVideoInCanvas(entry.url, entry.model);
                 historyList.querySelectorAll('div').forEach(t => {
                     t.classList.remove('border-primary', 'shadow-glow');
                     t.classList.add('border-white/10');
@@ -508,17 +602,20 @@ export function VideoStudio() {
 
     regenerateBtn.onclick = () => generateBtn.click();
 
-    newPromptBtn.onclick = () => {
+    const resetToPromptBar = () => {
         canvas.classList.add('opacity-0', 'pointer-events-none', 'translate-y-10', 'scale-95');
         canvas.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
         canvasControls.classList.add('opacity-0');
         canvasControls.classList.remove('opacity-100');
         hero.classList.remove('hidden', 'opacity-0', 'scale-95', '-translate-y-10', 'pointer-events-none');
         promptWrapper.classList.remove('hidden', 'opacity-40');
+    };
+
+    newPromptBtn.onclick = () => {
+        resetToPromptBar();
         textarea.value = '';
         picker.reset();
         uploadedImageUrl = null;
-        // Reset to t2v mode
         imageMode = false;
         selectedModel = t2vModels[0].id;
         selectedModelName = t2vModels[0].name;
@@ -528,12 +625,35 @@ export function VideoStudio() {
         textarea.focus();
     };
 
+    extendBtn.onclick = () => {
+        if (!lastGenerationId) return;
+        resetToPromptBar();
+        textarea.value = '';
+        picker.reset();
+        uploadedImageUrl = null;
+        imageMode = false;
+        selectedModel = 'seedance-v2.0-extend';
+        selectedModelName = 'Seedance 2.0 Extend';
+        document.getElementById('v-model-btn-label').textContent = selectedModelName;
+        updateControlsForModel(selectedModel);
+        textarea.placeholder = 'Optional: describe how to continue the video...';
+        textarea.focus();
+    };
+
     // ==========================================
     // 5. GENERATION LOGIC
     // ==========================================
     generateBtn.onclick = async () => {
         const prompt = textarea.value.trim();
-        if (imageMode) {
+        const model = getCurrentModel();
+        const isExtendMode = model?.requiresRequestId;
+
+        if (isExtendMode) {
+            if (!lastGenerationId) {
+                alert('No Seedance 2.0 generation found to extend. Generate a video first.');
+                return;
+            }
+        } else if (imageMode) {
             if (!uploadedImageUrl) {
                 alert('Please upload a start frame image first.');
                 return;
@@ -556,13 +676,17 @@ export function VideoStudio() {
         generateBtn.innerHTML = `<span class="animate-spin inline-block mr-2 text-black">◌</span> Generating...`;
 
         try {
-            const params = {
-                model: selectedModel,
-                aspect_ratio: selectedAr,
-            };
+            const params = { model: selectedModel };
 
             if (prompt) params.prompt = prompt;
-            if (imageMode && uploadedImageUrl) params.image_url = uploadedImageUrl;
+
+            // Extend mode: pass stored request_id, skip aspect_ratio
+            if (isExtendMode) {
+                params.request_id = lastGenerationId;
+            } else {
+                params.aspect_ratio = selectedAr;
+                if (imageMode && uploadedImageUrl) params.image_url = uploadedImageUrl;
+            }
 
             const durations = getCurrentDurations(selectedModel);
             if (durations.length > 0) params.duration = selectedDuration;
@@ -570,16 +694,25 @@ export function VideoStudio() {
             const resolutions = getCurrentResolutions(selectedModel);
             if (resolutions.length > 0) params.resolution = selectedResolution;
 
-            const model = getCurrentModels().find(m => m.id === selectedModel);
-            if (model?.inputs?.quality) params.quality = model.inputs.quality.default;
+            if (selectedQuality) params.quality = selectedQuality;
 
             const res = imageMode ? await muapi.generateI2V(params) : await muapi.generateVideo(params);
 
             console.log('[VideoStudio] Full response:', res);
 
             if (res && res.url) {
+                const genId = res.id || res.request_id || Date.now().toString();
+                // Store request_id for seedance-v2.0 models (enables Extend button)
+                if (selectedModel === 'seedance-v2.0-t2v' || selectedModel === 'seedance-v2.0-i2v') {
+                    lastGenerationId = genId;
+                    lastGenerationModel = selectedModel;
+                } else {
+                    lastGenerationId = null;
+                    lastGenerationModel = null;
+                }
+
                 addToHistory({
-                    id: res.id || Date.now().toString(),
+                    id: genId,
                     url: res.url,
                     prompt,
                     model: selectedModel,
@@ -587,7 +720,7 @@ export function VideoStudio() {
                     duration: selectedDuration,
                     timestamp: new Date().toISOString()
                 });
-                showVideoInCanvas(res.url);
+                showVideoInCanvas(res.url, selectedModel);
             } else {
                 console.error('[VideoStudio] No video URL in response:', res);
                 throw new Error('No video URL returned by API');

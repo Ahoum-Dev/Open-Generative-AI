@@ -2171,6 +2171,17 @@ export const t2vModels = [
     }
   },
   {
+    "id": "seedance-v2.0-extend",
+    "name": "Seedance 2.0 Extend",
+    "requiresRequestId": true,
+    "inputs": {
+      "request_id": { "type": "string", "title": "Request ID", "name": "request_id", "description": "Request ID of the original Seedance 2.0 video generation.", "placeholder": "abcdefg-123-456-789-a1b2c3d4e5f6" },
+      "prompt": { "type": "string", "title": "Prompt", "name": "prompt", "description": "Optional prompt to guide the extension. If omitted, the model continues with the original scene." },
+      "duration": { "enum": [5, 10, 15], "title": "Duration", "name": "duration", "type": "int", "description": "The duration of the generated video extension in seconds", "default": 5 },
+      "quality": { "enum": ["high", "basic"], "title": "Quality", "name": "quality", "type": "string", "description": "Quality of the generated video.", "default": "basic" }
+    }
+  },
+  {
     "id": "kling-v2.1-master-t2v",
     "name": "Kling v2.1 Master",
     "inputs": {
@@ -7863,6 +7874,46 @@ export const i2vModels = [
         "name": "generate_audio",
         "description": "Whether to generate audio for the video",
         "default": true
+      }
+    }
+  },
+  {
+    "id": "seedance-v2.0-i2v",
+    "name": "Seedance 2.0 I2V",
+    "endpoint": "seedance-v2.0-i2v",
+    "family": "seedance-v2.0",
+    "imageField": "images_list",
+    "hasPrompt": true,
+    "inputs": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "name": "prompt",
+        "description": "The prompt to guide video generation from the image."
+      },
+      "aspect_ratio": {
+        "type": "string",
+        "title": "Aspect Ratio",
+        "name": "aspect_ratio",
+        "description": "Aspect ratio of the output video.",
+        "enum": ["16:9", "9:16", "4:3", "3:4"],
+        "default": "16:9"
+      },
+      "duration": {
+        "type": "int",
+        "title": "Duration",
+        "name": "duration",
+        "description": "The duration of the generated video in seconds",
+        "enum": [5, 10, 15],
+        "default": 5
+      },
+      "quality": {
+        "type": "string",
+        "title": "Quality",
+        "name": "quality",
+        "description": "Quality of the generated video.",
+        "enum": ["high", "basic"],
+        "default": "basic"
       }
     }
   }
