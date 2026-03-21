@@ -650,7 +650,7 @@ export default function CinemaStudio({ apiKey, onGenerationComplete, historyItem
 
             {/* ── 3. Floating Prompt Bar ── */}
             <div
-                className={`absolute bottom-8 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-4xl z-30 transition-all duration-700 ${showCanvas ? 'opacity-0 pointer-events-none translate-y-20' : 'opacity-100 translate-y-0'}`}
+                className={`absolute bottom-8 left-4 right-4 md:left-0 md:right-0 md:mx-auto md:max-w-4xl z-30 transition-all duration-700 ${showCanvas ? 'opacity-0 pointer-events-none translate-y-20' : 'opacity-100 translate-y-0'}`}
             >
                 <div className="bg-[#1a1a1a] border border-white/10 rounded-[2rem] p-4 flex justify-between shadow-3xl items-end relative">
 
