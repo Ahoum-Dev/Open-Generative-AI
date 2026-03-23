@@ -27,7 +27,7 @@ export function Header(navigate) {
 
     const menu = document.createElement('nav');
     menu.className = 'hidden lg:flex items-center gap-6 text-[13px] font-bold text-secondary';
-    const items = ['Explore', 'Image', 'Video', 'Lip Sync', 'Edit', 'Character', 'Contests', 'Vibe Motion', 'Cinema Studio', 'AI Influencer', 'Apps', 'Assist', 'Community'];
+    const items = ['Image', 'Video', 'Lip Sync', 'Cinema Studio'];
 
     items.forEach(item => {
         const link = document.createElement('a');
@@ -39,10 +39,6 @@ export function Header(navigate) {
             const dot = document.createElement('div');
             dot.className = 'absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full';
             link.appendChild(dot);
-        }
-
-        if (item === 'Contests') {
-            link.innerHTML += ' <span class="bg-primary/10 text-primary text-[8px] px-1.5 py-0.5 rounded-full ml-1 border border-primary/20">New</span>';
         }
 
         link.onclick = () => {
