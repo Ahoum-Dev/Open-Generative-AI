@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import SectionSwitcher from '@/components/SectionSwitcher';
 
 const STATUS_STYLES = {
   draft: 'bg-white/5 text-white/60 border-white/10',
@@ -115,6 +116,8 @@ export default function BatchDetail({ batchId, apiKey }) {
       {/* Top header */}
       <header className="flex-shrink-0 h-14 border-b border-white/[0.03] flex items-center justify-between px-6 bg-black/20 backdrop-blur-md">
         <div className="flex items-center gap-3">
+          <SectionSwitcher active="batch" />
+          <span className="text-white/20">·</span>
           <a href="/batch" className="text-white/40 hover:text-white text-[12px]">← Back to batches</a>
           <span className="text-white/20">/</span>
           <span className="text-sm font-bold tracking-tight">{batch.name}</span>
