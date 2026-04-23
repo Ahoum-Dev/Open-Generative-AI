@@ -1,0 +1,12 @@
+{
+  "name": "workflow-builder",
+  "version": "0.0.0-stub",
+  "description": "Local stub. Upstream submodule (Anil-matcha/workflow-ui) is unavailable. Provides no-op exports so the build succeeds; the Workflows tab will render a 'feature unavailable' notice at runtime.",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./dist/tailwind.css": "./src/empty.css"
+  },
+  "private": true
+}

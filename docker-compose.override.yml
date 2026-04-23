@@ -1,0 +1,29 @@
+# Dev-mode override. Compose auto-merges this with docker-compose.yml.
+# Provides hot reload (next dev) and live source mount so code changes
+# on the host appear in the container without rebuilding the image.
+#
+# Delete or rename this file to run a pure production stack via
+# `docker compose -f docker-compose.yml up`.
+
+services:
+  web:
+    user: root
+    command: ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && npx next dev -H 0.0.0.0 -p 3000"]
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./:/app
+      - web_node_modules:/app/node_modules
+      - web_next_cache:/app/.next
+
+  worker:
+    user: root
+    command: ["sh", "-c", "echo 'worker placeholder — replaced in slice 4'; tail -f /dev/null"]
+    volumes:
+      - ./:/app
+      - worker_node_modules:/app/node_modules
+
+volumes:
+  web_node_modules:
+  web_next_cache:
+  worker_node_modules:
