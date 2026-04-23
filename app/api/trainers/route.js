@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getApiKey } from '@/lib/batchAuth';
 import { uploadFileToMuapi } from '@/lib/muapiUpload';
-import { saveLocalBackup } from '@/lib/localUploadStore';
+import { saveLocalBackup, publicUrlFor } from '@/lib/localUploadStore';
 
 export async function GET() {
   const trainers = await prisma.trainer.findMany({
@@ -12,18 +12,10 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  const apiKey = getApiKey(request);
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'MuAPI API key is required. Set it in /studio or pass x-api-key.' },
-      { status: 401 },
-    );
-  }
-
   let form;
   try {
     form = await request.formData();
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Invalid multipart body' }, { status: 400 });
   }
 
@@ -46,25 +38,45 @@ export async function POST(request) {
     }
   }
 
-  let muapiUrl;
-  try {
-    muapiUrl = await uploadFileToMuapi(apiKey, file);
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 502 });
-  }
-
+  // Create the row first so we have an id for the local filename.
   const trainer = await prisma.trainer.create({
-    data: { name, csvLabel, imageUrl: muapiUrl },
+    data: { name, csvLabel, imageUrl: '' },
   });
 
-  const localPath = await saveLocalBackup('trainers', trainer.id, file);
-  if (localPath) {
-    await prisma.trainer.update({
-      where: { id: trainer.id },
-      data: { localPath },
-    });
-    trainer.localPath = localPath;
+  // Always save a local copy.
+  const { localPath, fileName } = await saveLocalBackup('trainers', trainer.id, file);
+
+  // Try MuAPI in the background — non-fatal if it fails (no credits, no key, etc).
+  // The slice-4 worker will re-upload from the local copy when submitting jobs.
+  let muapiUrl = null;
+  let muapiNote = null;
+  const apiKey = getApiKey(request);
+  if (apiKey) {
+    try {
+      muapiUrl = await uploadFileToMuapi(apiKey, file);
+    } catch (err) {
+      muapiNote = err.message;
+    }
+  } else {
+    muapiNote = 'No MuAPI key — local copy only. Set the key in /studio when credits are available.';
   }
 
-  return NextResponse.json({ trainer }, { status: 201 });
+  // Pick the best display URL we have. Prefer MuAPI (CDN), fall back to local route.
+  const imageUrl = muapiUrl || (fileName ? publicUrlFor('trainers', fileName) : '');
+
+  if (!imageUrl) {
+    // Both MuAPI and local backup failed — abandon the row so we don't leave junk.
+    await prisma.trainer.delete({ where: { id: trainer.id } });
+    return NextResponse.json(
+      { error: `Failed to persist image. MuAPI: ${muapiNote || 'n/a'}. Local: write failed.` },
+      { status: 500 },
+    );
+  }
+
+  const updated = await prisma.trainer.update({
+    where: { id: trainer.id },
+    data: { imageUrl, localPath },
+  });
+
+  return NextResponse.json({ trainer: updated, muapiNote }, { status: 201 });
 }
