@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getApiKey } from '@/lib/batchAuth';
 import { uploadFileToMuapi } from '@/lib/muapiUpload';
-import { saveLocalBackup } from '@/lib/localUploadStore';
+import { saveLocalBackup, publicUrlFor } from '@/lib/localUploadStore';
 
 export async function GET() {
   const studios = await prisma.studio.findMany({
@@ -12,14 +12,6 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  const apiKey = getApiKey(request);
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'MuAPI API key is required. Set it in /studio or pass x-api-key.' },
-      { status: 401 },
-    );
-  }
-
   let form;
   try {
     form = await request.formData();
@@ -46,25 +38,39 @@ export async function POST(request) {
     }
   }
 
-  let muapiUrl;
-  try {
-    muapiUrl = await uploadFileToMuapi(apiKey, file);
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 502 });
-  }
-
   const studio = await prisma.studio.create({
-    data: { name, csvLabel, imageUrl: muapiUrl },
+    data: { name, csvLabel, imageUrl: '' },
   });
 
-  const localPath = await saveLocalBackup('studios', studio.id, file);
-  if (localPath) {
-    await prisma.studio.update({
-      where: { id: studio.id },
-      data: { localPath },
-    });
-    studio.localPath = localPath;
+  const { localPath, fileName } = await saveLocalBackup('studios', studio.id, file);
+
+  let muapiUrl = null;
+  let muapiNote = null;
+  const apiKey = getApiKey(request);
+  if (apiKey) {
+    try {
+      muapiUrl = await uploadFileToMuapi(apiKey, file);
+    } catch (err) {
+      muapiNote = err.message;
+    }
+  } else {
+    muapiNote = 'No MuAPI key — local copy only. Set the key in /studio when credits are available.';
   }
 
-  return NextResponse.json({ studio }, { status: 201 });
+  const imageUrl = muapiUrl || (fileName ? publicUrlFor('studios', fileName) : '');
+
+  if (!imageUrl) {
+    await prisma.studio.delete({ where: { id: studio.id } });
+    return NextResponse.json(
+      { error: `Failed to persist image. MuAPI: ${muapiNote || 'n/a'}. Local: write failed.` },
+      { status: 500 },
+    );
+  }
+
+  const updated = await prisma.studio.update({
+    where: { id: studio.id },
+    data: { imageUrl, localPath },
+  });
+
+  return NextResponse.json({ studio: updated, muapiNote }, { status: 201 });
 }
