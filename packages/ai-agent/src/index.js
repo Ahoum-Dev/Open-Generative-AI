@@ -21,7 +21,7 @@ const Unavailable = ({ feature }) =>
     React.createElement(
       'p',
       { style: { color: '#ffffff80', maxWidth: 480 } },
-      `The ai-agent package is not bundled with this Ahoum-Dev fork. The /agents/${feature} route is a no-op. See packages/ai-agent/package.json for context.`
+      `The ai-agent package is not bundled in this fork. The /agents/${feature} route is a no-op. See packages/ai-agent/package.json for context.`
     )
   );
 

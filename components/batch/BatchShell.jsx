@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import ApiKeyModal from '@/components/ApiKeyModal';
+import SectionSwitcher from '@/components/SectionSwitcher';
 import TrainersTab from './TrainersTab';
 import StudiosTab from './StudiosTab';
 import BatchesTab from './BatchesTab';
@@ -56,13 +57,15 @@ export default function BatchShell() {
     <div className="min-h-screen bg-[#030303] text-white flex flex-col">
       <header className="flex-shrink-0 h-14 border-b border-white/[0.03] flex items-center justify-between px-6 bg-black/20 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <span className="text-sm font-bold tracking-tight">Batch</span>
-          <span className="text-white/30 text-sm">/ Open Generative AI</span>
+          <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity" title="Home">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <span className="text-sm font-bold tracking-tight hidden sm:block">OpenGenerativeAI</span>
+          </a>
+          <SectionSwitcher active="batch" />
         </div>
 
         <nav className="flex items-center gap-6">
@@ -83,12 +86,6 @@ export default function BatchShell() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <a
-            href="/studio"
-            className="text-[12px] text-white/50 hover:text-white/80 transition-colors"
-          >
-            ← Studio
-          </a>
           <button
             onClick={handleKeyChange}
             className="text-[11px] text-white/40 hover:text-red-400 transition-colors"
