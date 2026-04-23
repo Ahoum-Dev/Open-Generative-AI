@@ -1,0 +1,12 @@
+{
+  "name": "ai-agent",
+  "version": "0.0.0-stub",
+  "description": "Local stub. Upstream submodule (jaiprasad04/ai-agent) is unavailable. Provides no-op exports so the build succeeds; the /agents routes will render a 'feature unavailable' notice at runtime.",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./dist/tailwind.css": "./src/empty.css"
+  },
+  "private": true
+}
