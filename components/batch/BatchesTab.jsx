@@ -68,7 +68,11 @@ export default function BatchesTab({ apiKey }) {
             </thead>
             <tbody>
               {batches.map((b) => (
-                <tr key={b.id} className="border-t border-white/[0.03] hover:bg-white/[0.02]">
+                <tr
+                  key={b.id}
+                  onClick={() => { window.location.href = `/batch/${b.id}`; }}
+                  className="border-t border-white/[0.03] hover:bg-white/[0.03] cursor-pointer"
+                >
                   <td className="px-4 py-3 text-white/90 font-medium">{b.name}</td>
                   <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
                   <td className="px-4 py-3 text-white/60 text-[12px]">
@@ -89,9 +93,13 @@ export default function BatchesTab({ apiKey }) {
         <NewBatchWizard
           apiKey={apiKey}
           onClose={() => setWizardOpen(false)}
-          onCreated={async () => {
+          onCreated={(batch) => {
             setWizardOpen(false);
-            await refresh();
+            if (batch?.id) {
+              window.location.href = `/batch/${batch.id}`;
+            } else {
+              refresh();
+            }
           }}
         />
       )}
