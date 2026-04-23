@@ -10,6 +10,7 @@
 import { PrismaClient } from '@prisma/client';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { renderPrompt } from '../lib/promptTemplate.js';
 
 const prisma = new PrismaClient({ log: ['error'] });
 
@@ -118,8 +119,14 @@ async function submitJob(jobId) {
     if (!job.trainer) throw new Error('Job has no trainer');
     const trainerCdnUrl = await ensureMuapiUrl('trainer', job.trainer);
 
+    const fullPrompt = renderPrompt({
+      trainer: job.trainer,
+      studio: job.studio,
+      job,
+    });
+
     const payload = {
-      prompt: job.prompt,
+      prompt: fullPrompt,
       images_list: [trainerCdnUrl],
       aspect_ratio: job.aspectRatio,
       duration: job.duration,
