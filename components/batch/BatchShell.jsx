@@ -100,7 +100,7 @@ export default function BatchShell() {
 
       <main className="flex-1 overflow-y-auto px-6 py-8">
         <div className="max-w-6xl mx-auto">
-          {activeTab === 'batches' && <BatchesTab />}
+          {activeTab === 'batches' && <BatchesTab apiKey={apiKey} />}
           {activeTab === 'trainers' && <TrainersTab apiKey={apiKey} />}
           {activeTab === 'studios' && <StudiosTab apiKey={apiKey} />}
         </div>
