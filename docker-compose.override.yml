@@ -18,7 +18,7 @@ services:
 
   worker:
     user: root
-    command: ["sh", "-c", "echo 'worker placeholder — replaced in slice 4'; tail -f /dev/null"]
+    command: ["sh", "-c", "npx prisma generate && node worker/index.js"]
     volumes:
       - ./:/app
       - worker_node_modules:/app/node_modules
