@@ -21,6 +21,6 @@ export const WorkflowBuilder = () =>
     React.createElement(
       'p',
       { style: { color: '#ffffff80', maxWidth: 480 } },
-      'The workflow-builder package is not bundled with this Ahoum-Dev fork. The Workflows tab is a no-op. See packages/workflow-ui/package.json for context.'
+      'The workflow-builder package is not bundled in this fork. The Workflows tab is a no-op. See packages/workflow-ui/package.json for context.'
     )
   );

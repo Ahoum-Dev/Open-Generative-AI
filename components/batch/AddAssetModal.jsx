@@ -60,7 +60,7 @@ export default function AddAssetModal({ apiKey, endpoint, label, onClose, onCrea
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={label === 'Trainer' ? 'e.g. Raj' : 'e.g. Ahoum studio'}
+              placeholder={label === 'Trainer' ? 'e.g. Raj' : 'e.g. Main studio'}
               className="w-full bg-white/5 border border-white/[0.03] rounded-md px-4 py-2 text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#d9ff00]/30"
               required
             />

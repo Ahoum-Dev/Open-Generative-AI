@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ImageStudio, VideoStudio, LipSyncStudio, CinemaStudio, WorkflowStudio, AgentStudio, getUserBalance } from 'studio';
 import axios from 'axios';
 import ApiKeyModal from './ApiKeyModal';
+import SectionSwitcher from './SectionSwitcher';
 
 const TABS = [
   { id: 'image',   label: 'Image Studio' },
@@ -240,14 +241,17 @@ export default function StandaloneShell() {
       {/* Header */}
       {isHeaderVisible && (
         <header className="flex-shrink-0 h-14 border-b border-white/[0.03] flex items-center justify-between px-6 bg-black/20 backdrop-blur-md z-40">
-          {/* Left: Logo */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-              </svg>
-            </div>
-            <span className="text-sm font-bold tracking-tight hidden sm:block">OpenGenerativeAI</span>
+          {/* Left: Logo + section switcher */}
+          <div className="flex items-center gap-3">
+            <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity" title="Home">
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <span className="text-sm font-bold tracking-tight hidden sm:block">OpenGenerativeAI</span>
+            </a>
+            <SectionSwitcher active="studio" />
           </div>
 
           {/* Center: Navigation */}
