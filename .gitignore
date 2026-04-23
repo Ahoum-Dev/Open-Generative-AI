@@ -36,3 +36,7 @@ out/
 .env
 .env.*
 !.env.example
+
+# Local trainer/studio uploads (docker volume at runtime)
+/data/uploads/
+
