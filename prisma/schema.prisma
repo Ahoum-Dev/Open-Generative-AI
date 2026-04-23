@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trainer {
+  id        String   @id @default(cuid())
+  name      String
+  csvLabel  String?  @unique @map("csv_label")
+  imageUrl  String   @map("image_url")
+  localPath String?  @map("local_path")
+  createdAt DateTime @default(now()) @map("created_at")
+  jobs      Job[]
+
+  @@map("trainers")
+}
+
+model Studio {
+  id        String   @id @default(cuid())
+  name      String
+  csvLabel  String?  @unique @map("csv_label")
+  imageUrl  String   @map("image_url")
+  localPath String?  @map("local_path")
+  createdAt DateTime @default(now()) @map("created_at")
+  jobs      Job[]
+
+  @@map("studios")
+}
+
+model Batch {
+  id          String   @id @default(cuid())
+  name        String
+  model       String   @default("seedance-v2.0-i2v")
+  duration    Int      @default(15)
+  quality     String   @default("basic")
+  aspectRatio String   @default("16:9") @map("aspect_ratio")
+  concurrency Int      @default(5)
+  status      String   @default("draft")
+  total       Int      @default(0)
+  done        Int      @default(0)
+  failed      Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  jobs        Job[]
+
+  @@map("batches")
+}
+
+model Job {
+  id             String    @id @default(cuid())
+  batchId        String    @map("batch_id")
+  rowIndex       Int       @map("row_index")
+  practiceName   String    @map("practice_name")
+  trainerId      String?   @map("trainer_id")
+  studioId       String?   @map("studio_id")
+  prompt         String
+  startPosition  String?   @map("start_position")
+  cameraAngle    String?   @map("camera_angle")
+  aspectRatio    String    @default("16:9") @map("aspect_ratio")
+  duration       Int       @default(15)
+  quality        String    @default("basic")
+  status         String    @default("queued")
+  retries        Int       @default(0)
+  muapiRequestId String?   @map("muapi_request_id")
+  videoUrl       String?   @map("video_url")
+  error          String?
+  nextAttemptAt  DateTime? @map("next_attempt_at")
+  startedAt      DateTime? @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  batch   Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainer Trainer? @relation(fields: [trainerId], references: [id])
+  studio  Studio?  @relation(fields: [studioId], references: [id])
+
+  @@index([batchId, status])
+  @@index([status, nextAttemptAt])
+  @@map("jobs")
+}
