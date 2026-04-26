@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readLocal } from '@/lib/localUploadStore';
 
-const ALLOWED = new Set(['trainers', 'studios']);
+const ALLOWED = new Set(['trainers', 'studios', 'videos']);
 
 export async function GET(_request, { params }) {
   const { kind, name } = await params;
