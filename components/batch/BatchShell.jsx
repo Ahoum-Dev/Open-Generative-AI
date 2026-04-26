@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import ApiKeyModal from '@/components/ApiKeyModal';
+import ProviderKeysModal from '@/components/ProviderKeysModal';
 import SectionSwitcher from '@/components/SectionSwitcher';
+import { getAllKeys, hasAnyKey } from '@/lib/keyStore';
 import TrainersTab from './TrainersTab';
 import StudiosTab from './StudiosTab';
 import BatchesTab from './BatchesTab';
-
-const STORAGE_KEY = 'muapi_key';
 
 const TABS = [
   { id: 'batches', label: 'Batches' },
@@ -16,29 +15,19 @@ const TABS = [
 ];
 
 export default function BatchShell() {
-  const [apiKey, setApiKey] = useState(null);
+  const [keys, setKeys] = useState({});
   const [hasMounted, setHasMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('batches');
+  const [editingKeys, setEditingKeys] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
-    const stored = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-    if (stored) {
-      setApiKey(stored);
-      document.cookie = `muapi_key=${stored}; path=/; max-age=31536000; SameSite=Lax`;
-    }
+    setKeys(getAllKeys());
   }, []);
 
-  const handleKeySave = (key) => {
-    localStorage.setItem(STORAGE_KEY, key);
-    document.cookie = `muapi_key=${key}; path=/; max-age=31536000; SameSite=Lax`;
-    setApiKey(key);
-  };
-
-  const handleKeyChange = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    document.cookie = 'muapi_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    setApiKey(null);
+  const handleKeysDone = () => {
+    setKeys(getAllKeys());
+    setEditingKeys(false);
   };
 
   if (!hasMounted) {
@@ -49,9 +38,21 @@ export default function BatchShell() {
     );
   }
 
-  if (!apiKey) {
-    return <ApiKeyModal onSave={handleKeySave} />;
+  const noKeys = !hasAnyKey();
+  if (noKeys || editingKeys) {
+    return (
+      <ProviderKeysModal
+        onDone={handleKeysDone}
+        onClose={() => setEditingKeys(false)}
+        allowClose={!noKeys}
+      />
+    );
   }
+
+  // Trainer/Studio CRUD currently uploads to MuAPI eagerly when the key is
+  // present. Pass the MuAPI key (if any) so existing behavior keeps working;
+  // those routes fall back to local-only when no key is given.
+  const trainerStudioKey = keys.muapi || '';
 
   return (
     <div className="min-h-screen bg-[#030303] text-white flex flex-col">
@@ -86,20 +87,23 @@ export default function BatchShell() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <span className="text-[11px] text-white/40">
+            {Object.keys(keys).length} provider{Object.keys(keys).length === 1 ? '' : 's'} configured
+          </span>
           <button
-            onClick={handleKeyChange}
-            className="text-[11px] text-white/40 hover:text-red-400 transition-colors"
+            onClick={() => setEditingKeys(true)}
+            className="text-[11px] text-white/60 hover:text-[#d9ff00] transition-colors"
           >
-            Change key
+            Manage keys
           </button>
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto px-6 py-8">
         <div className="max-w-6xl mx-auto">
-          {activeTab === 'batches' && <BatchesTab apiKey={apiKey} />}
-          {activeTab === 'trainers' && <TrainersTab apiKey={apiKey} />}
-          {activeTab === 'studios' && <StudiosTab apiKey={apiKey} />}
+          {activeTab === 'batches' && <BatchesTab apiKey={trainerStudioKey} keys={keys} />}
+          {activeTab === 'trainers' && <TrainersTab apiKey={trainerStudioKey} />}
+          {activeTab === 'studios' && <StudiosTab apiKey={trainerStudioKey} />}
         </div>
       </main>
     </div>

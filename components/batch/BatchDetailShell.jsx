@@ -1,28 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import ApiKeyModal from '@/components/ApiKeyModal';
+import ProviderKeysModal from '@/components/ProviderKeysModal';
+import { getAllKeys, hasAnyKey } from '@/lib/keyStore';
 import BatchDetail from './BatchDetail';
 
-const STORAGE_KEY = 'muapi_key';
-
 export default function BatchDetailShell({ batchId }) {
-  const [apiKey, setApiKey] = useState(null);
+  const [keys, setKeys] = useState({});
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
-    const stored = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-    if (stored) {
-      setApiKey(stored);
-      document.cookie = `muapi_key=${stored}; path=/; max-age=31536000; SameSite=Lax`;
-    }
+    setKeys(getAllKeys());
   }, []);
 
-  const handleKeySave = (key) => {
-    localStorage.setItem(STORAGE_KEY, key);
-    document.cookie = `muapi_key=${key}; path=/; max-age=31536000; SameSite=Lax`;
-    setApiKey(key);
+  const handleKeysDone = () => {
+    setKeys(getAllKeys());
   };
 
   if (!hasMounted) {
@@ -33,9 +26,13 @@ export default function BatchDetailShell({ batchId }) {
     );
   }
 
-  if (!apiKey) {
-    return <ApiKeyModal onSave={handleKeySave} />;
+  if (!hasAnyKey()) {
+    return <ProviderKeysModal onDone={handleKeysDone} />;
   }
 
-  return <BatchDetail batchId={batchId} apiKey={apiKey} />;
+  // BatchDetail uses the apiKey only for trainer/studio fetches and the
+  // simulate/start/pause control routes — none of which are provider-specific.
+  // Pass the MuAPI key for backwards compatibility.
+  const apiKey = keys.muapi || Object.values(keys)[0] || '';
+  return <BatchDetail batchId={batchId} apiKey={apiKey} keys={keys} />;
 }
