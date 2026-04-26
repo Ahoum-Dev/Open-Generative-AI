@@ -1,38 +1,37 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ProviderKeysModal from '@/components/ProviderKeysModal';
-import { getAllKeys, hasAnyKey } from '@/lib/keyStore';
+import { getKey } from '@/lib/keyStore';
 import BatchDetail from './BatchDetail';
 
-export default function BatchDetailShell({ batchId }) {
-  const [keys, setKeys] = useState({});
-  const [hasMounted, setHasMounted] = useState(false);
+export default function BatchDetailShell({ batchId, providerStatus = [] }) {
+  const router = useRouter();
+  const [editingKeys, setEditingKeys] = useState(false);
 
-  useEffect(() => {
-    setHasMounted(true);
-    setKeys(getAllKeys());
-  }, []);
+  const noKeys = !providerStatus.some((p) => p.hasKey);
 
   const handleKeysDone = () => {
-    setKeys(getAllKeys());
+    setEditingKeys(false);
+    router.refresh();
   };
 
-  if (!hasMounted) {
+  if (noKeys || editingKeys) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="animate-spin text-[#d9ff00] text-3xl">◌</div>
-      </div>
+      <ProviderKeysModal
+        providerStatus={providerStatus}
+        onDone={handleKeysDone}
+        onClose={() => setEditingKeys(false)}
+        allowClose={!noKeys}
+      />
     );
-  }
-
-  if (!hasAnyKey()) {
-    return <ProviderKeysModal onDone={handleKeysDone} />;
   }
 
   // BatchDetail uses the apiKey only for trainer/studio fetches and the
   // simulate/start/pause control routes — none of which are provider-specific.
-  // Pass the MuAPI key for backwards compatibility.
-  const apiKey = keys.muapi || Object.values(keys)[0] || '';
-  return <BatchDetail batchId={batchId} apiKey={apiKey} keys={keys} />;
+  // Pass the MuAPI key for backwards compatibility; server falls back to env
+  // when the header is empty.
+  const apiKey = (typeof window !== 'undefined' && getKey('muapi')) || '';
+  return <BatchDetail batchId={batchId} apiKey={apiKey} providerStatus={providerStatus} />;
 }
