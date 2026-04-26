@@ -5,10 +5,6 @@ import { getProvider } from '@/lib/providers';
 
 export async function POST(request, { params }) {
   const { id } = await params;
-  const apiKey = getApiKey(request);
-  if (!apiKey) {
-    return NextResponse.json({ error: 'API key required' }, { status: 401 });
-  }
 
   const batch = await prisma.batch.findUnique({
     where: { id },
@@ -23,6 +19,11 @@ export async function POST(request, { params }) {
   });
   if (!batch) {
     return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
+  }
+
+  const apiKey = getApiKey(request, batch.provider);
+  if (!apiKey) {
+    return NextResponse.json({ error: `API key for provider "${batch.provider}" required` }, { status: 401 });
   }
 
   let provider;

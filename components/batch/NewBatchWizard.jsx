@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { parseBatchCsv } from '@/lib/csvParser';
+import { getAllKeys, getKey } from '@/lib/keyStore';
 
 const DEFAULTS = {
   provider: '',                     // user must pick — no default
@@ -18,6 +19,7 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
   const [trainers, setTrainers] = useState([]);
   const [studios, setStudios] = useState([]);
   const [providers, setProviders] = useState([]);
+  const [savedKeys, setSavedKeys] = useState({});
   const [libraryError, setLibraryError] = useState(null);
 
   // Step 1
@@ -52,6 +54,7 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
         setTrainers(tr.trainers || []);
         setStudios(st.studios || []);
         setProviders(pv.providers || []);
+        setSavedKeys(getAllKeys());
       } catch (err) {
         if (!cancelled) setLibraryError(err.message);
       }
@@ -136,9 +139,10 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
     setEstimating(true);
     setEstimateError(null);
     try {
+      const providerKey = getKey(settings.provider) || apiKey;
       const res = await fetch(`/api/batches/${batchId}/estimate-cost`, {
         method: 'POST',
-        headers: { 'x-api-key': apiKey },
+        headers: { 'x-api-key': providerKey },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Cost estimate failed: ${res.status}`);
@@ -172,9 +176,10 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
           aspectRatio: settings.aspectRatio,
         })),
       };
+      const providerKey = getKey(settings.provider) || apiKey;
       const res = await fetch('/api/batches', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': providerKey },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -222,6 +227,7 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
             <Step1
               name={name} setName={setName}
               providers={providers}
+              savedKeys={savedKeys}
               settings={settings} setSettings={setSettings}
               csvFileName={csvFileName} csvRows={csvRows}
               csvError={csvError}
@@ -329,7 +335,7 @@ function Field({ label, children, hint }) {
 const inputClass =
   'w-full bg-white/5 border border-white/[0.03] rounded-md px-3 py-2 text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#d9ff00]/30 text-[13px]';
 
-function Step1({ name, setName, providers, settings, setSettings, csvFileName, csvRows, csvError, onCsvFile }) {
+function Step1({ name, setName, providers, savedKeys, settings, setSettings, csvFileName, csvRows, csvError, onCsvFile }) {
   return (
     <div className="space-y-6">
       <Field label="Batch name">
@@ -342,7 +348,7 @@ function Step1({ name, setName, providers, settings, setSettings, csvFileName, c
         />
       </Field>
 
-      <Field label="Provider" hint="Pick which video API runs this batch. Each provider needs its own API key.">
+      <Field label="Provider" hint="Pick which video API runs this batch. Providers without a saved key are disabled — add keys via Manage keys in the header.">
         <select
           value={settings.provider}
           onChange={(e) => {
@@ -356,9 +362,14 @@ function Step1({ name, setName, providers, settings, setSettings, csvFileName, c
           className={inputClass}
         >
           <option value="" disabled>— pick a provider —</option>
-          {providers.map((p) => (
-            <option key={p.id} value={p.id}>{p.label}</option>
-          ))}
+          {providers.map((p) => {
+            const hasKey = !!savedKeys[p.id];
+            return (
+              <option key={p.id} value={p.id} disabled={!hasKey}>
+                {p.label}{hasKey ? '' : ' — no key saved'}
+              </option>
+            );
+          })}
         </select>
       </Field>
 
