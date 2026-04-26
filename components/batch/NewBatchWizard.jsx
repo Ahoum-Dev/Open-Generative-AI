@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { parseBatchCsv } from '@/lib/csvParser';
 
 const DEFAULTS = {
+  provider: '',                     // user must pick — no default
   model: 'seedance-v2.0-i2v',
   duration: 15,
   quality: 'basic',
@@ -16,6 +17,7 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
 
   const [trainers, setTrainers] = useState([]);
   const [studios, setStudios] = useState([]);
+  const [providers, setProviders] = useState([]);
   const [libraryError, setLibraryError] = useState(null);
 
   // Step 1
@@ -41,13 +43,15 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
     let cancelled = false;
     async function load() {
       try {
-        const [tr, st] = await Promise.all([
+        const [tr, st, pv] = await Promise.all([
           fetch('/api/trainers', { headers: { 'x-api-key': apiKey } }).then((r) => r.json()),
           fetch('/api/studios', { headers: { 'x-api-key': apiKey } }).then((r) => r.json()),
+          fetch('/api/providers').then((r) => r.json()),
         ]);
         if (cancelled) return;
         setTrainers(tr.trainers || []);
         setStudios(st.studios || []);
+        setProviders(pv.providers || []);
       } catch (err) {
         if (!cancelled) setLibraryError(err.message);
       }
@@ -191,7 +195,7 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
 
   const [createdBatch, setCreatedBatch] = useState(null);
 
-  const canGoToStep2 = name.trim() && csvRows.length > 0;
+  const canGoToStep2 = name.trim() && csvRows.length > 0 && settings.provider;
   const canGoToStep3 = canGoToStep2 && activeRows.length > 0 && issues.length === 0;
 
   return (
@@ -217,6 +221,7 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
           {step === 1 && (
             <Step1
               name={name} setName={setName}
+              providers={providers}
               settings={settings} setSettings={setSettings}
               csvFileName={csvFileName} csvRows={csvRows}
               csvError={csvError}
@@ -324,7 +329,7 @@ function Field({ label, children, hint }) {
 const inputClass =
   'w-full bg-white/5 border border-white/[0.03] rounded-md px-3 py-2 text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#d9ff00]/30 text-[13px]';
 
-function Step1({ name, setName, settings, setSettings, csvFileName, csvRows, csvError, onCsvFile }) {
+function Step1({ name, setName, providers, settings, setSettings, csvFileName, csvRows, csvError, onCsvFile }) {
   return (
     <div className="space-y-6">
       <Field label="Batch name">
@@ -335,6 +340,26 @@ function Step1({ name, setName, settings, setSettings, csvFileName, csvRows, csv
           placeholder="e.g. Somatic practices — April run"
           className={inputClass}
         />
+      </Field>
+
+      <Field label="Provider" hint="Pick which video API runs this batch. Each provider needs its own API key.">
+        <select
+          value={settings.provider}
+          onChange={(e) => {
+            const p = providers.find((x) => x.id === e.target.value);
+            setSettings({
+              ...settings,
+              provider: e.target.value,
+              model: p?.defaultModel || settings.model,
+            });
+          }}
+          className={inputClass}
+        >
+          <option value="" disabled>— pick a provider —</option>
+          {providers.map((p) => (
+            <option key={p.id} value={p.id}>{p.label}</option>
+          ))}
+        </select>
       </Field>
 
       <Field label="CSV file" hint="Drop the Rasika-style CSV. We parse on upload and validate columns.">
@@ -383,7 +408,7 @@ function Step1({ name, setName, settings, setSettings, csvFileName, csvRows, csv
               <option value="3:4">3:4</option>
             </select>
           </Field>
-          <Field label="Concurrency" hint="How many MuAPI jobs run in parallel. Worker honours this.">
+          <Field label="Concurrency" hint="How many provider jobs run in parallel. Worker honours this.">
             <input
               type="number"
               min={1}
@@ -518,7 +543,7 @@ function Step3({ createdBatch, activeRows, estimate, estimating, estimateError, 
             </p>
           </div>
         ) : estimating ? (
-          <p className="text-white/40 text-sm">Calling MuAPI…</p>
+          <p className="text-white/40 text-sm">Fetching cost…</p>
         ) : estimateError ? (
           <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-[12px] rounded-md px-3 py-2">{estimateError}</div>
         ) : createdBatch ? (

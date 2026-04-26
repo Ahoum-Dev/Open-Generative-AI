@@ -13,7 +13,7 @@ export async function POST(_request, { params }) {
       retries: 0,
       error: null,
       nextAttemptAt: null,
-      muapiRequestId: null,
+      providerRequestId: null,
     },
   });
   return NextResponse.json({ job: updated });

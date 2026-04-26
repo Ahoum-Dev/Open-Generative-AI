@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getProvider } from '@/lib/providers';
 
 export async function GET() {
   const batches = await prisma.batch.findMany({
@@ -7,6 +8,7 @@ export async function GET() {
     select: {
       id: true,
       name: true,
+      provider: true,
       model: true,
       duration: true,
       quality: true,
@@ -33,7 +35,8 @@ export async function POST(request) {
 
   const {
     name,
-    model = 'seedance-v2.0-i2v',
+    provider,
+    model,
     duration = 15,
     quality = 'basic',
     aspectRatio = '16:9',
@@ -44,9 +47,20 @@ export async function POST(request) {
   if (!name || typeof name !== 'string') {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }
+  if (!provider || typeof provider !== 'string') {
+    return NextResponse.json({ error: 'provider is required' }, { status: 400 });
+  }
+  let providerAdapter;
+  try {
+    providerAdapter = getProvider(provider);
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 400 });
+  }
   if (!Array.isArray(jobs) || jobs.length === 0) {
     return NextResponse.json({ error: 'jobs must be a non-empty array' }, { status: 400 });
   }
+
+  const finalModel = model || providerAdapter.defaultModel;
 
   const cleanedJobs = jobs.map((j, i) => ({
     rowIndex: typeof j.rowIndex === 'number' ? j.rowIndex : i,
@@ -64,7 +78,8 @@ export async function POST(request) {
   const batch = await prisma.batch.create({
     data: {
       name: name.trim(),
-      model,
+      provider,
+      model: finalModel,
       duration,
       quality,
       aspectRatio,
@@ -76,6 +91,7 @@ export async function POST(request) {
     select: {
       id: true,
       name: true,
+      provider: true,
       status: true,
       total: true,
       createdAt: true,
