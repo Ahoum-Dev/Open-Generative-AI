@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { parseBatchCsv } from '@/lib/csvParser';
-import { getAllKeys, getKey } from '@/lib/keyStore';
+import { getKey } from '@/lib/keyStore';
 
 const DEFAULTS = {
   provider: '',                     // user must pick — no default
@@ -13,14 +13,15 @@ const DEFAULTS = {
   concurrency: 5,
 };
 
-export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
+export default function NewBatchWizard({ apiKey, providerStatus = [], onClose, onCreated }) {
   const [step, setStep] = useState(1);
 
   const [trainers, setTrainers] = useState([]);
   const [studios, setStudios] = useState([]);
-  const [providers, setProviders] = useState([]);
-  const [savedKeys, setSavedKeys] = useState({});
   const [libraryError, setLibraryError] = useState(null);
+
+  const providers = providerStatus.map((p) => ({ id: p.id, label: p.label, defaultModel: p.defaultModel }));
+  const savedKeys = Object.fromEntries(providerStatus.filter((p) => p.hasKey).map((p) => [p.id, true]));
 
   // Step 1
   const [name, setName] = useState('');
@@ -40,21 +41,18 @@ export default function NewBatchWizard({ apiKey, onClose, onCreated }) {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
 
-  // Load libraries
+  // Load trainer/studio libraries (provider list comes from server-rendered prop).
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const [tr, st, pv] = await Promise.all([
+        const [tr, st] = await Promise.all([
           fetch('/api/trainers', { headers: { 'x-api-key': apiKey } }).then((r) => r.json()),
           fetch('/api/studios', { headers: { 'x-api-key': apiKey } }).then((r) => r.json()),
-          fetch('/api/providers').then((r) => r.json()),
         ]);
         if (cancelled) return;
         setTrainers(tr.trainers || []);
         setStudios(st.studios || []);
-        setProviders(pv.providers || []);
-        setSavedKeys(getAllKeys());
       } catch (err) {
         if (!cancelled) setLibraryError(err.message);
       }

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import NewBatchWizard from './NewBatchWizard';
 
-export default function BatchesTab({ apiKey }) {
+export default function BatchesTab({ apiKey, providerStatus = [] }) {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -94,6 +94,7 @@ export default function BatchesTab({ apiKey }) {
       {wizardOpen && (
         <NewBatchWizard
           apiKey={apiKey}
+          providerStatus={providerStatus}
           onClose={() => setWizardOpen(false)}
           onCreated={(batch) => {
             setWizardOpen(false);

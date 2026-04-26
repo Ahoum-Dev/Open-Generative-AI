@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ProviderKeysModal from '@/components/ProviderKeysModal';
 import SectionSwitcher from '@/components/SectionSwitcher';
-import { getAllKeys, hasAnyKey } from '@/lib/keyStore';
+import { getKey } from '@/lib/keyStore';
 import TrainersTab from './TrainersTab';
 import StudiosTab from './StudiosTab';
 import BatchesTab from './BatchesTab';
@@ -14,34 +15,23 @@ const TABS = [
   { id: 'studios', label: 'Studios' },
 ];
 
-export default function BatchShell() {
-  const [keys, setKeys] = useState({});
-  const [hasMounted, setHasMounted] = useState(false);
+export default function BatchShell({ providerStatus = [] }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('batches');
   const [editingKeys, setEditingKeys] = useState(false);
 
-  useEffect(() => {
-    setHasMounted(true);
-    setKeys(getAllKeys());
-  }, []);
+  const configuredCount = providerStatus.filter((p) => p.hasKey).length;
+  const noKeys = configuredCount === 0;
 
   const handleKeysDone = () => {
-    setKeys(getAllKeys());
     setEditingKeys(false);
+    router.refresh();
   };
 
-  if (!hasMounted) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="animate-spin text-[#d9ff00] text-3xl">◌</div>
-      </div>
-    );
-  }
-
-  const noKeys = !hasAnyKey();
   if (noKeys || editingKeys) {
     return (
       <ProviderKeysModal
+        providerStatus={providerStatus}
         onDone={handleKeysDone}
         onClose={() => setEditingKeys(false)}
         allowClose={!noKeys}
@@ -49,10 +39,10 @@ export default function BatchShell() {
     );
   }
 
-  // Trainer/Studio CRUD currently uploads to MuAPI eagerly when the key is
-  // present. Pass the MuAPI key (if any) so existing behavior keeps working;
-  // those routes fall back to local-only when no key is given.
-  const trainerStudioKey = keys.muapi || '';
+  // Trainer/Studio CRUD calls send x-api-key from localStorage when present.
+  // If only env keys are configured, the header is empty and the server falls
+  // back to the env var via lib/batchAuth.js.
+  const trainerStudioKey = (typeof window !== 'undefined' && getKey('muapi')) || '';
 
   return (
     <div className="min-h-screen bg-[#030303] text-white flex flex-col">
@@ -88,7 +78,7 @@ export default function BatchShell() {
 
         <div className="flex items-center gap-3">
           <span className="text-[11px] text-white/40">
-            {Object.keys(keys).length} provider{Object.keys(keys).length === 1 ? '' : 's'} configured
+            {configuredCount} provider{configuredCount === 1 ? '' : 's'} configured
           </span>
           <button
             onClick={() => setEditingKeys(true)}
@@ -101,7 +91,7 @@ export default function BatchShell() {
 
       <main className="flex-1 overflow-y-auto px-6 py-8">
         <div className="max-w-6xl mx-auto">
-          {activeTab === 'batches' && <BatchesTab apiKey={trainerStudioKey} keys={keys} />}
+          {activeTab === 'batches' && <BatchesTab apiKey={trainerStudioKey} providerStatus={providerStatus} />}
           {activeTab === 'trainers' && <TrainersTab apiKey={trainerStudioKey} />}
           {activeTab === 'studios' && <StudiosTab apiKey={trainerStudioKey} />}
         </div>

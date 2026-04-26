@@ -10,7 +10,7 @@ const PROVIDER_META = [
   { id: 'openrouter', label: 'OpenRouter', signupUrl: 'https://openrouter.ai/keys', placeholder: 'sk-or-...' },
 ];
 
-export default function ProviderKeysModal({ onDone, onClose, allowClose = false }) {
+export default function ProviderKeysModal({ providerStatus = [], onDone, onClose, allowClose = false }) {
   const [drafts, setDrafts] = useState({});
   const [saved, setSaved] = useState({});
 
@@ -19,6 +19,10 @@ export default function ProviderKeysModal({ onDone, onClose, allowClose = false 
     setSaved(existing);
     setDrafts(existing);
   }, []);
+
+  const envKeyMap = Object.fromEntries(
+    providerStatus.filter((p) => p.hasEnvKey).map((p) => [p.id, true]),
+  );
 
   const handleChange = (id, value) => {
     setDrafts((prev) => ({ ...prev, [id]: value }));
@@ -60,6 +64,7 @@ export default function ProviderKeysModal({ onDone, onClose, allowClose = false 
           <h1 className="text-xl font-bold text-white tracking-tight mb-2">Provider API keys</h1>
           <p className="text-white/40 text-[13px] leading-relaxed px-4">
             Add a key for each provider you want to use. Batches dispatch to whichever provider you pick at creation time.
+            Keys set as <code className="text-white/60">PROVIDER_API_KEY</code> environment variables are detected automatically.
           </p>
         </div>
 
@@ -67,6 +72,7 @@ export default function ProviderKeysModal({ onDone, onClose, allowClose = false 
           {PROVIDER_META.map((p) => {
             const value = drafts[p.id] || '';
             const isSaved = !!saved[p.id];
+            const isEnv = !!envKeyMap[p.id];
             return (
               <div key={p.id} className="bg-white/[0.02] border border-white/[0.04] rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -74,6 +80,9 @@ export default function ProviderKeysModal({ onDone, onClose, allowClose = false 
                     <span className="text-white/90 text-[13px] font-semibold">{p.label}</span>
                     {isSaved && (
                       <span className="text-[10px] uppercase tracking-wide text-[#d9ff00]/80 bg-[#d9ff00]/10 px-1.5 py-0.5 rounded">saved</span>
+                    )}
+                    {!isSaved && isEnv && (
+                      <span className="text-[10px] uppercase tracking-wide text-white/60 bg-white/10 px-1.5 py-0.5 rounded">env</span>
                     )}
                   </div>
                   <a
