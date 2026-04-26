@@ -121,7 +121,7 @@ async function submitJob(jobId) {
 
   try {
     if (!job.trainer) throw new Error('Job has no trainer');
-    const trainerCdnUrl = await ensureProviderUrl(provider, apiKey, 'trainer', job.trainer);
+    const { buffer: imageBuffer, mime: imageMime, fileName: imageFileName } = await loadAssetBuffer(job.trainer);
 
     const prompt = renderPrompt({
       trainer: job.trainer,
@@ -132,9 +132,13 @@ async function submitJob(jobId) {
     const result = await provider.submit({
       apiKey,
       prompt,
-      imageUrl: trainerCdnUrl,
+      imageBuffer,
+      imageMime,
+      imageFileName,
+      jobId: job.id,
       duration: job.duration,
       quality: job.quality,
+      resolution: '480p',
       aspectRatio: job.aspectRatio,
       model: job.batch.model,
     });
@@ -272,33 +276,33 @@ async function maybeMarkCompleted(batch) {
   }
 }
 
-// If imageUrl is local (/api/uploads/...), upload the file to the active
-// provider and persist the resulting CDN URL on the asset row so we only
-// pay the round-trip once. Note: caches are per-asset, so switching a
-// trainer between providers will re-upload on first use.
-async function ensureProviderUrl(provider, apiKey, kind, asset) {
-  const url = asset.imageUrl || '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-
-  const fileName = url.split('/').pop();
-  if (!fileName) throw new Error(`Invalid asset url: ${url}`);
-  const folder = kind === 'trainer' ? 'trainers' : 'studios';
-  const filePath = path.join(UPLOAD_DIR, folder, decodeURIComponent(fileName));
-  const buf = await readFile(filePath);
-
-  const { url: cdnUrl } = await provider.uploadAsset({
-    apiKey,
-    file: new Blob([buf]),
-    fileName,
-  });
-
-  if (kind === 'trainer') {
-    await prisma.trainer.update({ where: { id: asset.id }, data: { imageUrl: cdnUrl } });
-  } else {
-    await prisma.studio.update({ where: { id: asset.id }, data: { imageUrl: cdnUrl } });
+// Read the local file backing an asset (trainer/studio) into a Buffer so the
+// active provider's adapter can upload it however it likes. We don't cache a
+// per-trainer CDN URL anymore because trainers can be reused across providers,
+// and a cached URL from one provider isn't reachable by another.
+async function loadAssetBuffer(asset) {
+  // Prefer localPath (set on upload); fall back to deriving from imageUrl
+  // for legacy rows that only stored a remote URL.
+  let filePath = asset.localPath;
+  if (!filePath) {
+    const url = asset.imageUrl || '';
+    if (!url.startsWith('/api/uploads/')) {
+      throw new Error(`Asset ${asset.id} has no localPath and imageUrl is not local`);
+    }
+    const fileName = decodeURIComponent(url.split('/').pop() || '');
+    filePath = path.join(UPLOAD_DIR, 'trainers', fileName);
   }
-  log('reupload.ok', { kind, assetId: asset.id, provider: provider.id });
-  return cdnUrl;
+  const buffer = await readFile(filePath);
+  const fileName = path.basename(filePath);
+  return { buffer, mime: mimeFromName(fileName), fileName };
+}
+
+function mimeFromName(name) {
+  const lower = (name || '').toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  return 'image/jpeg';
 }
 
 async function recoverOrphans() {
