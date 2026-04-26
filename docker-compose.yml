@@ -31,6 +31,10 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://ogai:ogai_dev_pw@postgres:5432/ogai
       - MUAPI_API_KEY=${MUAPI_API_KEY:-}
+      - SEGMIND_API_KEY=${SEGMIND_API_KEY:-}
+      - BYTEPLUS_API_KEY=${BYTEPLUS_API_KEY:-}
+      - BYTEPLUS_REGION=${BYTEPLUS_REGION:-ap-southeast-1}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
     volumes:
       - uploads_data:/data/uploads
     healthcheck:
@@ -52,6 +56,10 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://ogai:ogai_dev_pw@postgres:5432/ogai
       - MUAPI_API_KEY=${MUAPI_API_KEY:-}
+      - SEGMIND_API_KEY=${SEGMIND_API_KEY:-}
+      - BYTEPLUS_API_KEY=${BYTEPLUS_API_KEY:-}
+      - BYTEPLUS_REGION=${BYTEPLUS_REGION:-ap-southeast-1}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
     volumes:
       - uploads_data:/data/uploads
     command: ["node", "worker/index.js"]

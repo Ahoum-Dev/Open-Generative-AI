@@ -32,7 +32,7 @@ export default function BatchesTab({ apiKey }) {
         <div>
           <h1 className="text-xl font-bold">Batches</h1>
           <p className="text-white/40 text-[13px] mt-1">
-            Upload a CSV, map trainers, run MuAPI video generations end-to-end.
+            Upload a CSV, map trainers, run video generations end-to-end across providers.
           </p>
         </div>
         <button
@@ -60,6 +60,7 @@ export default function BatchesTab({ apiKey }) {
             <thead className="bg-white/[0.02] text-white/40 text-[11px] uppercase tracking-wide">
               <tr>
                 <th className="text-left px-4 py-3">Name</th>
+                <th className="text-left px-4 py-3 w-28">Provider</th>
                 <th className="text-left px-4 py-3 w-32">Status</th>
                 <th className="text-left px-4 py-3 w-36">Progress</th>
                 <th className="text-left px-4 py-3 w-32">Model</th>
@@ -74,6 +75,7 @@ export default function BatchesTab({ apiKey }) {
                   className="border-t border-white/[0.03] hover:bg-white/[0.03] cursor-pointer"
                 >
                   <td className="px-4 py-3 text-white/90 font-medium">{b.name}</td>
+                  <td className="px-4 py-3 text-white/60 text-[12px] uppercase tracking-wide">{b.provider}</td>
                   <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
                   <td className="px-4 py-3 text-white/60 text-[12px]">
                     {b.done}/{b.total} done · {b.failed} failed

@@ -34,6 +34,7 @@ model Studio {
 model Batch {
   id          String   @id @default(cuid())
   name        String
+  provider    String
   model       String   @default("seedance-v2.0-i2v")
   duration    Int      @default(15)
   quality     String   @default("basic")
@@ -63,10 +64,10 @@ model Job {
   aspectRatio    String    @default("16:9") @map("aspect_ratio")
   duration       Int       @default(15)
   quality        String    @default("basic")
-  status         String    @default("queued")
-  retries        Int       @default(0)
-  muapiRequestId String?   @map("muapi_request_id")
-  videoUrl       String?   @map("video_url")
+  status            String    @default("queued")
+  retries           Int       @default(0)
+  providerRequestId String?   @map("provider_request_id")
+  videoUrl          String?   @map("video_url")
   error          String?
   nextAttemptAt  DateTime? @map("next_attempt_at")
   startedAt      DateTime? @map("started_at")
