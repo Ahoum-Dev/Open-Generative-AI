@@ -13,6 +13,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { renderPrompt } from '../lib/promptTemplate.js';
 import { getProvider } from '../lib/providers/index.js';
+import { TerminalProviderError } from '../lib/providers/errors.js';
 
 const prisma = new PrismaClient({ log: ['error'] });
 
@@ -171,8 +172,13 @@ async function submitJob(jobId) {
     });
     log('submit.ok', { jobId: job.id, providerRequestId: result.providerRequestId, provider: provider.id });
   } catch (err) {
-    log('submit.fail', { jobId: job.id, err: err.message });
-    await markFailureWithBackoff(job.id, err.message);
+    const terminal = err instanceof TerminalProviderError;
+    log('submit.fail', { jobId: job.id, err: err.message, terminal, billed: terminal ? err.billed : null });
+    if (terminal) {
+      await markTerminalFailure(job.id, err.message);
+    } else {
+      await markFailureWithBackoff(job.id, err.message);
+    }
   }
 }
 
@@ -210,14 +216,34 @@ async function pollJob(job) {
       log('poll.done', { jobId: job.id, videoUrl: result.videoUrl });
       return;
     }
-    if (result.status === 'failed') {
-      await markFailureWithBackoff(job.id, result.error || 'unknown failure');
-      return;
-    }
     // pending — leave it
   } catch (err) {
+    if (err instanceof TerminalProviderError) {
+      log('poll.terminal', { jobId: job.id, err: err.message, billed: err.billed });
+      await markTerminalFailure(job.id, err.message);
+      return;
+    }
     log('poll.error', { jobId: job.id, err: err.message });
   }
+}
+
+async function markTerminalFailure(jobId, errorMsg) {
+  const job = await prisma.job.findUnique({ where: { id: jobId } });
+  if (!job) return;
+  await prisma.$transaction([
+    prisma.job.update({
+      where: { id: jobId },
+      data: {
+        status: 'failed',
+        error: errorMsg.slice(0, 1000),
+        completedAt: new Date(),
+      },
+    }),
+    prisma.batch.update({
+      where: { id: job.batchId },
+      data: { failed: { increment: 1 } },
+    }),
+  ]);
 }
 
 async function markFailureWithBackoff(jobId, errorMsg) {
@@ -306,14 +332,43 @@ function mimeFromName(name) {
 }
 
 async function recoverOrphans() {
-  const submitting = await prisma.job.updateMany({
+  // Jobs in 'submitting' on boot are dangerous: the worker may have already
+  // sent a provider request that succeeded but crashed before persisting the
+  // providerRequestId. Re-queueing would re-submit the same job and double-
+  // charge. Mark them failed; the user can verify via the provider dashboard
+  // and click Retry in the UI for any that weren't actually billed.
+  const orphans = await prisma.job.findMany({
     where: { status: 'submitting' },
-    data: { status: 'queued', providerRequestId: null },
+    select: { id: true, batchId: true },
   });
-  if (submitting.count > 0) log('recover.submitting', { count: submitting.count });
+  if (orphans.length > 0) {
+    const batchCounts = orphans.reduce((acc, o) => {
+      acc[o.batchId] = (acc[o.batchId] || 0) + 1;
+      return acc;
+    }, {});
+    await prisma.$transaction([
+      prisma.job.updateMany({
+        where: { id: { in: orphans.map((o) => o.id) } },
+        data: {
+          status: 'failed',
+          error: 'Worker restarted during submit. Verify on the provider dashboard before clicking Retry — the request may have been billed.',
+          completedAt: new Date(),
+        },
+      }),
+      ...Object.entries(batchCounts).map(([batchId, count]) =>
+        prisma.batch.update({
+          where: { id: batchId },
+          data: { failed: { increment: count } },
+        }),
+      ),
+    ]);
+    log('recover.submitting', { count: orphans.length, action: 'marked_failed_for_safety' });
+  }
 
+  // Polling jobs are safe — the next pollPending tick picks them up using
+  // their persisted providerRequestId.
   const stillPolling = await prisma.job.count({ where: { status: 'polling' } });
-  if (stillPolling > 0) log('recover.polling', { count: stillPolling });
+  if (stillPolling > 0) log('recover.polling', { count: stillPolling, action: 'will_resume_on_next_tick' });
 }
 
 function sleep(ms) {
