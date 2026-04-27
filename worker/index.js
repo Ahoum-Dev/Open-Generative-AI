@@ -196,6 +196,25 @@ async function pollJob(job) {
   const apiKey = API_KEYS[provider.id];
   if (!apiKey) return;
 
+  // Hard wall-clock ceiling. If a 15-second video generation has been in
+  // flight longer than the provider's expected upper bound, stop polling —
+  // either the providerRequestId is dead or the job is genuinely stuck on
+  // the provider's side. Either way, infinite polling is wrong.
+  const maxMs = (provider.maxPollMinutes || 30) * 60_000;
+  if (job.startedAt && Date.now() - new Date(job.startedAt).getTime() > maxMs) {
+    log('poll.deadline_exceeded', {
+      jobId: job.id,
+      provider: provider.id,
+      maxPollMinutes: provider.maxPollMinutes || 30,
+      startedAt: job.startedAt,
+    });
+    await markTerminalFailure(
+      job.id,
+      `Generation exceeded ${provider.maxPollMinutes || 30}-minute max wait for ${provider.id}. The provider may still complete it; check the dashboard before clicking Retry.`,
+    );
+    return;
+  }
+
   try {
     const result = await provider.pollResult({
       apiKey,
